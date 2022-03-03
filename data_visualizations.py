@@ -1,4 +1,8 @@
 from genericpath import exists
+from posixpath import split
+from time import strptime
+from html5lib import serialize
+from datetime import datetime
 import pandas as ps
 import matplotlib.pyplot as mplot
 import numpy as np
@@ -29,6 +33,14 @@ def opt_walk(opts):
     return { 'verbose':verbose, 'infile':infile }
 
 
+def convert_timestamps(timestamps):
+    ts_list = []
+    for i in timestamps:
+        datetime_obj = strptime(i, '%Y-%m-%d %H:%M:%S%f')
+        ts_list.append(datetime_obj.timestamp())
+    return ts_list
+
+
 def main():
 
     try:
@@ -50,8 +62,16 @@ def main():
     arr = data_set.to_numpy()
     cols = data_set.columns
     keys = data_set.keys()
-    data_set.plot.line()
-    mplot.show()
+    for i in range(601):
+        if i == 600:
+            print(arr[i, 0])
+    
+    k = arr[3,0]
+    print(k)
+    d = datetime.strptime(k, '%Y-%m-%d %H:%M:%S.%f')
+    m = d.timestamp() * 1000
+    print(datetime.fromtimestamp(m / 1000))
+
 
 if __name__ == '__main__' :
     main()
