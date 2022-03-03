@@ -1,7 +1,5 @@
+#!/bin/python3
 from genericpath import exists
-from posixpath import split
-from time import strptime
-from html5lib import serialize
 from datetime import datetime
 import pandas as ps
 import matplotlib.pyplot as mplot
@@ -33,12 +31,35 @@ def opt_walk(opts):
     return { 'verbose':verbose, 'infile':infile }
 
 
-def convert_timestamps(timestamps):
+def convert_timestamps_to_ms(timestamps):
     ts_list = []
-    for i in timestamps:
-        datetime_obj = strptime(i, '%Y-%m-%d %H:%M:%S%f')
-        ts_list.append(datetime_obj.timestamp())
+    for ts in timestamps:
+        ts_list.append(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f').timestamp() * 1000)
     return ts_list
+
+def calculate_sample_time(ts_list):
+    step = 1
+    ctr = 1
+    finished = False
+    while not finished :
+        pre_dif = ts_list[step] - ts_list[0]
+        dif = ts_list[step + step] - ts_list[step]
+        ctr += 1
+        if pre_dif != dif :
+            step += 1
+        else :
+            stopped = False
+            for i in range(ctr * step, len(ts_list), step):
+                dif = ts_list[i] - ts_list[i - step]
+                if dif != pre_dif:
+                    stopped = True
+                    break
+        if stopped :
+            step += 1
+            continue
+        else:
+            finished = True
+    return (ts_list[step] - ts_list[0]) / step;    
 
 
 def main():
@@ -60,18 +81,11 @@ def main():
     
     data_set = ps.read_csv(infile, sep=',', squeeze=True, names=['time_stamp', 'acceleration'])
     arr = data_set.to_numpy()
-    cols = data_set.columns
-    keys = data_set.keys()
-    for i in range(601):
-        if i == 600:
-            print(arr[i, 0])
+    ts_list = convert_timestamps_to_ms(arr[:, 0])
+    fulltime = ts_list[6] - ts_list[0]
+    print(fulltime)    
+    sample_time = calculate_sample_time(ts_list)
     
-    k = arr[3,0]
-    print(k)
-    d = datetime.strptime(k, '%Y-%m-%d %H:%M:%S.%f')
-    m = d.timestamp() * 1000
-    print(datetime.fromtimestamp(m / 1000))
-
 
 if __name__ == '__main__' :
     main()
