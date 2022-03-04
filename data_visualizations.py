@@ -30,12 +30,23 @@ def opt_walk(opts) :
             return None
     return { 'verbose':verbose, 'infile':infile }
 
-
 def convert_timestamps_to_ms(timestamps) :
     ts_list = []
     for ts in timestamps:
         ts_list.append(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f').timestamp() * 1000)
     return ts_list
+
+def find_peak_values(data_set) :
+    peak_values = {}
+    i = 1
+    size = len(data_set[:,0])
+    while i < (size - 1) :
+        if (data_set[i, 1] > data_set[i - 1, 1]) and (data_set[i, 1] > data_set[i + 1, 1]) :
+            peak_values[data_set[i, 0]] = data_set[i, 1]
+            i += 2
+        else :
+            i += 1
+    return peak_values
 
 def calculate_sample_time(ts_list) :
     step = 1
@@ -117,7 +128,8 @@ def main() :
        elif option == '2' :
             print('Sampling frequency in Hz: ' + sampling_frequency_hz + '\r\nSampling time period in second: ' + sampling_time_sec)
        elif option == '3' :
-            print(' ')
+            peak_values = find_peak_values(arr)
+            print(peak_values)
        elif option == '4' :
             print(' ')
        elif option == 'x' :
