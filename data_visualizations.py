@@ -118,6 +118,22 @@ def calculate_sample_time(ts_list) :
 
     return sample_time / 1000
 
+def calculate_fft_with_freq_line(data_set, sampling_frequency) :
+    d_fft = np.fft.fft(data_set)
+    n = len(d_fft)
+    d_fft = d_fft / n
+    df = sampling_frequency / n
+    stop = n * df
+    freq_line = np.arange(0, stop, df)
+    return freq_line, d_fft
+
+def show_fft_figure(freq_line, data_set) :
+    data_set_db = 20 * np.lib.scimath.log10(np.abs(data_set))
+    mplot.semilogx(freq_line, data_set_db)
+    mplot.xlabel('Frequency [Hz]')
+    mplot.ylabel('Amplitude [dB]')
+    mplot.show()
+
 def menu() :
     print(
         'Select an option:\r\n'
@@ -195,7 +211,7 @@ def main() :
                     print('You answer is invalid. Try again!')
                     continue
                 if res not in range(1,10) :
-                    print('Your answer is not in range (1-10). Try again!')
+                    print('Your answer is not in range (1-9). Try again!')
                 else :
                     ok = True
             peak_values, positions = find_peak_values_with_postitions(arr)
@@ -204,7 +220,8 @@ def main() :
             time_points = get_time_points(sampling_time_sec, positions)
             show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
        elif option == '4' :
-            print(' ')
+            freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:,1], sampling_frequency_hz)
+            show_fft_figure(freq_line, fft_data_set)
        elif option == 'x' :
             quit = True
        else :
