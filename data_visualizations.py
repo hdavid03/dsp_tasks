@@ -1,4 +1,5 @@
 #!/bin/python3
+from curses.ascii import isdigit
 from genericpath import exists
 from datetime import datetime
 import pandas as ps
@@ -16,15 +17,15 @@ def usage() :
 def opt_walk(opts) :
     verbose = False
     infile = None
-    for o, a in opts:
-        if o in ("-v", "--verbose"):
+    for o, a in opts :
+        if o in ("-v", "--verbose") :
             verbose = True
-        elif o in ("-h", "--help"):
+        elif o in ("-h", "--help") :
             usage()
             return None
-        elif o in ("-i", "--infile"):
+        elif o in ("-i", "--infile") :
             infile = a
-        else:
+        else :
             print("unhandled option")
             usage()
             return None
@@ -36,17 +37,57 @@ def convert_timestamps_to_ms(timestamps) :
         ts_list.append(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f').timestamp() * 1000)
     return ts_list
 
-def find_peak_values(data_set) :
-    peak_values = {}
+def get_positions_of_data_set(data_set) :
+    positions = range(0, len(data_set))
+    return positions
+
+def find_peak_values_with_postitions(data_set) :
+    peak_values = [[], []]
+    positions = []
+    if data_set[0, 1] > data_set[1, 1] :
+        peak_values[0].append(data_set[0, 0])
+        peak_values[1].append(data_set[0, 1])
+        positions.append(0)
     i = 1
     size = len(data_set[:,0])
     while i < (size - 1) :
         if (data_set[i, 1] > data_set[i - 1, 1]) and (data_set[i, 1] > data_set[i + 1, 1]) :
-            peak_values[data_set[i, 0]] = data_set[i, 1]
+            peak_values[0].append(data_set[i, 0])
+            peak_values[1].append(data_set[i, 1])
+            positions.append(i)
             i += 2
         else :
             i += 1
-    return peak_values
+    if data_set[-1, 1] > data_set[-2, 1] :
+        peak_values[0].append(data_set[size - 1, 0])
+        peak_values[1].append(data_set[size - 1, 1])
+        positions.append(size - 1)
+    return peak_values, positions
+
+def reduce_peak_values(peak_values, positions) :
+    new_positions = []
+    new_peak_values = [[], []]
+    if peak_values[1][0] > peak_values[1][1] :
+        new_peak_values[0].append(peak_values[0][0])
+        new_peak_values[1].append(peak_values[1][0])
+        new_positions.append(positions[0])
+    i = 1
+    size = len(peak_values[0])
+    while i < (size - 1) :
+        if (peak_values[1][i] > peak_values[1][i - 1]) and (peak_values[1][i] > peak_values[1][i + 1]) :
+            new_peak_values[0].append(peak_values[0][i])
+            new_peak_values[1].append(peak_values[1][i])
+            new_positions.append(positions[i])
+            i += 2
+        else :
+            i += 1
+    if peak_values[1][-1] > peak_values[1][-2] :
+        new_peak_values[0].append(peak_values[0][size - 1])
+        new_peak_values[1].append(peak_values[1][size - 1])
+        new_positions.append(positions[size - 1])
+    return new_peak_values, new_positions
+    
+
 
 def calculate_sample_time(ts_list) :
     step = 1
@@ -88,11 +129,25 @@ def menu() :
         'x) - exit from this program'
     )
 
-def show_figure(x, y) :
-    mplot.plot(x, y)
+def show_time_diagram(t, y) :
+    mplot.plot(t, y)
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration')
-    mplot.xlim(x[0], x[-1])
+    mplot.xlim(t[0], t[-1])
+    mplot.show()
+
+def get_time_points(sampling_period, positions) :
+    time_points = []
+    for i in positions : 
+        time_points.append(i * sampling_period)
+    return time_points
+
+def show_peak_values(t, y, tp, p) :
+    mplot.plot(t, y)
+    mplot.xlabel('Time [sec]')
+    mplot.ylabel('Acceleration')
+    mplot.xlim(t[0], t[-1])
+    mplot.plot(tp, p, 'o')
     mplot.show()
 
 def main() :
@@ -117,6 +172,7 @@ def main() :
     sampling_frequency_hz = (1 / sampling_time_sec)
     n = len(ts_list)
     time_line = np.arange(0, n * sampling_time_sec, sampling_time_sec)
+    
     menu()
     quit = False
     while not quit :
@@ -124,12 +180,29 @@ def main() :
        if option == '0' :
             menu()
        elif option == '1' :
-            show_figure(time_line, arr[:, 1])
+            show_time_diagram(time_line, arr[:, 1])
        elif option == '2' :
             print('Sampling frequency in Hz: ' + sampling_frequency_hz + '\r\nSampling time period in second: ' + sampling_time_sec)
        elif option == '3' :
-            peak_values = find_peak_values(arr)
-            print(peak_values)
+            print('This program use a simple peak finding algorithm. The more times the algorithm runs, the wider ranges it covers.\r\n'
+            'How many times should the algorithm runs (1-10)?\r\n')
+            ok = False
+            while not ok :
+                answ = input()
+                try :
+                    res = int(answ)
+                except ValueError :
+                    print('You answer is invalid. Try again!')
+                    continue
+                if res not in range(1,10) :
+                    print('Your answer is not in range (1-10). Try again!')
+                else :
+                    ok = True
+            peak_values, positions = find_peak_values_with_postitions(arr)
+            for i in range(0, int(res) - 1) :
+                peak_values, positions = reduce_peak_values(peak_values, positions)
+            time_points = get_time_points(sampling_time_sec, positions)
+            show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
        elif option == '4' :
             print(' ')
        elif option == 'x' :
