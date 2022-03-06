@@ -1,7 +1,7 @@
 #!/bin/python3
-from curses.ascii import isdigit
 from genericpath import exists
 from datetime import datetime
+from matplotlib.text import Text
 import pandas as ps
 import matplotlib.pyplot as mplot
 import numpy as np
@@ -87,8 +87,6 @@ def reduce_peak_values(peak_values, positions) :
         new_positions.append(positions[size - 1])
     return new_peak_values, new_positions
     
-
-
 def calculate_sample_time(ts_list) :
     step = 1
     finished = False
@@ -127,11 +125,12 @@ def calculate_fft_with_freq_line(data_set, sampling_frequency) :
     freq_line = np.arange(0, stop, df)
     return freq_line, d_fft
 
-def show_fft_figure(freq_line, data_set) :
+def show_fft_figure(freq_line, data_set, sampling_frequency) :
     data_set_db = 20 * np.lib.scimath.log10(np.abs(data_set))
     mplot.semilogx(freq_line, data_set_db)
     mplot.xlabel('Frequency [Hz]')
     mplot.ylabel('Amplitude [dB]')
+    mplot.grid()
     mplot.show()
 
 def menu() :
@@ -142,13 +141,31 @@ def menu() :
         '2) - show the sampling frequency & time\r\n'
         '3) - find peak values\r\n'
         '4) - show the input signal in frequency domain\r\n'
+        '5) - show histogram of data set\r\n'
         'x) - exit from this program'
     )
 
+def get_user_input():
+    ok = False
+    while not ok :
+        answ = input()
+        try :
+            res = int(answ)
+        except ValueError :
+            print('You answer is invalid. Try again!')
+            continue
+        if res not in range(1,10) :
+            print('Your answer is not in range (1-9). Try again!')
+        else :
+            ok = True
+    return res
+
 def show_time_diagram(t, y) :
     mplot.plot(t, y)
+    mplot.title('Logarithmic frequency domain')
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration')
+    mplot.grid()
     mplot.xlim(t[0], t[-1])
     mplot.show()
 
@@ -160,10 +177,22 @@ def get_time_points(sampling_period, positions) :
 
 def show_peak_values(t, y, tp, p) :
     mplot.plot(t, y)
+    mplot.title('Time diagram')
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration')
     mplot.xlim(t[0], t[-1])
+    mplot.grid()
     mplot.plot(tp, p, 'o')
+    mplot.show()
+
+def show_histogram(data_set, sampling_time) :
+    figure, hist = mplot.subplots()
+    hist.hist(data_set)
+    y_values = hist.get_yticks()
+    hist.set_yticklabels(['{:.2f}'.format(i * sampling_time) for i in y_values])
+    mplot.title('Histogram')
+    mplot.xlabel('Acceleration')
+    mplot.ylabel('Time [s]')
     mplot.show()
 
 def main() :
@@ -192,39 +221,30 @@ def main() :
     menu()
     quit = False
     while not quit :
-       option = input()
-       if option == '0' :
+        option = input()
+        if option == '0' :
             menu()
-       elif option == '1' :
+        elif option == '1' :
             show_time_diagram(time_line, arr[:, 1])
-       elif option == '2' :
-            print('Sampling frequency in Hz: ' + sampling_frequency_hz + '\r\nSampling time period in second: ' + sampling_time_sec)
-       elif option == '3' :
+        elif option == '2' :
+            print('Sampling frequency in Hz: ' + str(sampling_frequency_hz) + '\r\nSampling time period in second: ' + str(sampling_time_sec))
+        elif option == '3' :
             print('This program use a simple peak finding algorithm. The more times the algorithm runs, the wider ranges it covers.\r\n'
-            'How many times should the algorithm runs (1-10)?\r\n')
-            ok = False
-            while not ok :
-                answ = input()
-                try :
-                    res = int(answ)
-                except ValueError :
-                    print('You answer is invalid. Try again!')
-                    continue
-                if res not in range(1,10) :
-                    print('Your answer is not in range (1-9). Try again!')
-                else :
-                    ok = True
+            'How many times should the algorithm runs (1-10)?')
+            res = get_user_input() 
             peak_values, positions = find_peak_values_with_postitions(arr)
             for i in range(0, int(res) - 1) :
                 peak_values, positions = reduce_peak_values(peak_values, positions)
             time_points = get_time_points(sampling_time_sec, positions)
             show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
-       elif option == '4' :
+        elif option == '4' :
             freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:,1], sampling_frequency_hz)
             show_fft_figure(freq_line, fft_data_set)
-       elif option == 'x' :
+        elif option == '5' :
+            show_histogram(arr[:,1], sampling_time_sec)
+        elif option == 'x' :
             quit = True
-       else :
+        else :
             print('Invalid input parameter. Try again!\r\n')
 
 if __name__ == '__main__' :
