@@ -1,8 +1,8 @@
 #!/bin/python3
 from genericpath import exists
 from datetime import datetime
-from matplotlib.text import Text
 import pandas as ps
+import statistics as stat
 import matplotlib.pyplot as mplot
 import numpy as np
 import getopt
@@ -10,26 +10,41 @@ import sys
 
 def usage() :
     print(
-        '-h --help for help\r\n-i --infile filename\r\n'
+        '-h --help for help\r\n-i --infile filename\r\n-o --outfile filename'
     )
     pass
 
 def opt_walk(opts) :
     verbose = False
     infile = None
+    outfile = None
     for o, a in opts :
-        if o in ("-v", "--verbose") :
-            verbose = True
-        elif o in ("-h", "--help") :
+        if o in ("-h", "--help") :
             usage()
             return None
         elif o in ("-i", "--infile") :
             infile = a
+        elif o in ("-o", "--outfile") :
+            outfile = a
         else :
             print("unhandled option")
             usage()
             return None
-    return { 'verbose':verbose, 'infile':infile }
+    return { 'verbose':verbose, 'infile':infile, 'outfile':outfile}
+
+def menu() :
+    print(
+        'Select an option:\r\n'
+        '0) - show menu\r\n'
+        '1) - show time based figure of the input data set\r\n'
+        '2) - show the sampling frequency & time\r\n'
+        '3) - find peak values\r\n'
+        '4) - show the input signal in frequency domain\r\n'
+        '5) - show histogram of data set\r\n'
+        '6) - show scatter diagram of data set\r\n'
+        '7) - show statistical informations of the data set\r\n'
+        'x) - exit from this program'
+    )
 
 def convert_timestamps_to_ms(timestamps) :
     ts_list = []
@@ -116,6 +131,20 @@ def calculate_sample_time(ts_list) :
 
     return sample_time / 1000
 
+def show_statistics(data_set) :
+    mean = stat.fmean(data_set)
+    median = stat.median(data_set)
+    mode = stat.mode(data_set)
+    variance = stat.pvariance(data_set)
+    deviation = stat.pstdev(data_set)
+    print(
+        'Mean of data set: ' + str(mean) + '\r\n'
+        'Mode of data set: ' + str(mode) + '\r\n'
+        'Median of data set: ' + str(median) + '\r\n'
+        'Variance of data set: ' + str(variance) + '\r\n'
+        'Deviation of data set: ' + str(deviation) + '\r\n'
+    )
+
 def calculate_fft_with_freq_line(data_set, sampling_frequency) :
     d_fft = np.fft.fft(data_set)
     n = len(d_fft)
@@ -128,22 +157,15 @@ def calculate_fft_with_freq_line(data_set, sampling_frequency) :
 def show_fft_figure(freq_line, data_set, sampling_frequency) :
     data_set_db = 20 * np.lib.scimath.log10(np.abs(data_set))
     mplot.semilogx(freq_line, data_set_db)
+    mplot.title('DFT of the data set on logarithmic scale')
     mplot.xlabel('Frequency [Hz]')
     mplot.ylabel('Amplitude [dB]')
+    mplot.xlim(0, sampling_frequency / 2)
     mplot.grid()
     mplot.show()
 
-def menu() :
-    print(
-        'Select an option:\r\n'
-        '0) - show menu\r\n'
-        '1) - show time based figure of the input data set\r\n'
-        '2) - show the sampling frequency & time\r\n'
-        '3) - find peak values\r\n'
-        '4) - show the input signal in frequency domain\r\n'
-        '5) - show histogram of data set\r\n'
-        'x) - exit from this program'
-    )
+def show_scatter() :
+    return None
 
 def get_user_input():
     ok = False
@@ -177,7 +199,7 @@ def get_time_points(sampling_period, positions) :
 
 def show_peak_values(t, y, tp, p) :
     mplot.plot(t, y)
-    mplot.title('Time diagram')
+    mplot.title('Peak values of the data set')
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration')
     mplot.xlim(t[0], t[-1])
@@ -205,11 +227,16 @@ def main() :
     
     res = opt_walk(opts)
     infile = res['infile']
+    outfile = res['outfile']
     
     if (infile == None) or (not exists(infile)) :
         print('there is no existing input file\r\nhint: -i, --infile filename')
         sys.exit(1)    
-    
+
+    if (outfile == None) or (not exists(outfile)) :
+        outfile = './statistical_informations.txt'
+        print('There is no existing output file\r\nDefault output file\'s name is statistical_informations.txt. You can find it the working folder.')
+
     data_set = ps.read_csv(infile, sep=',', squeeze=True, names=['time_stamp', 'acceleration'])
     arr = data_set.to_numpy()
     ts_list = convert_timestamps_to_ms(arr[:, 0])
@@ -239,9 +266,13 @@ def main() :
             show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
         elif option == '4' :
             freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:,1], sampling_frequency_hz)
-            show_fft_figure(freq_line, fft_data_set)
+            show_fft_figure(freq_line, fft_data_set, sampling_frequency_hz)
         elif option == '5' :
             show_histogram(arr[:,1], sampling_time_sec)
+        elif option == '6' :
+            show_scatter()
+        elif option == '7' :
+            show_statistics(arr[:,1])
         elif option == 'x' :
             quit = True
         else :
