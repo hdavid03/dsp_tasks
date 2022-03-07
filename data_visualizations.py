@@ -181,11 +181,17 @@ def show_statistics(data_set) :
 # in addition it calculates the frequency resolution and the N-length frequency scale
 # it returns with the DFT points and the frequency scale
 def calculate_fft_with_freq_line(data_set, sampling_frequency) :
+    # Computing of the k-th element of x signal, where N is the number of elements of the discrete signal (DFT algorithm):
+    # X[k] = sum([x[n] * np.cos(2*n*np.pi*k/N) - x[n] * 1j * np.sin(2*n*np.pi*k/N) for n in range(0, N-1)])
+    # more information: https://en.wikipedia.org/wiki/Discrete_Fourier_transform
     d_fft = np.fft.fft(data_set)
     n = len(d_fft)
+    # 1/N multiplier
     d_fft = d_fft / n
+    # frequency resolution
     df = sampling_frequency / n
     stop = n * df
+    # calculating of the frequency axis
     freq_line = np.arange(0, stop, df)
     return freq_line, d_fft
 

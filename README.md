@@ -1,6 +1,8 @@
 # dsp_tasks
 This repository contains simple DSP tasks like data visualization, peak finding and fft etc.
 Used libraries:
+ - getopt (handling of input arguments)
+ https://docs.python.org/3/library/getopt.html
  - pandas (reading csv files)
  https://pandas.pydata.org/docs/index.html
  - matplotlib (data visualization)
@@ -9,6 +11,8 @@ Used libraries:
  https://docs.python.org/3/library/statistics.html
  - numpy
  https://numpy.org/doc/stable/user/index.html
+ - scipy (filter design)
+ https://docs.scipy.org/doc/scipy/reference/signal.html
 ## Python files
 #### data_visualizations.py
 This python file contains simple data visualizations and runs in a console window. The user can select an option from the menu. It is necessary to specify an input file as input argument that contains the sampling times and the given values.
