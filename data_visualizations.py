@@ -281,47 +281,57 @@ def main() :
         sys.exit(1)
     # opt_walk function returns with the path of the input file
     infile = opt_walk(opts)
-    
+    # if the infile variable is incorrect then close this program
     if (infile == None) or (not exists(infile)) :
         print('there is no existing input file\r\nhint: -i, --infile filename')
         sys.exit(1)    
-
+    # reading the csv file
     data_set = ps.read_csv(infile, sep=',', squeeze=True, names=['time_stamp', 'acceleration'])
+    # converting the DataFrame object to numpy array
     arr = data_set.to_numpy()
-    ts_list = convert_timestamps_to_ms(arr[:, 0])
+    # the first column of array contains the dates of sampling and the second one contains the values
+    dates = 0
+    values = 1
+    # converting the date timestamps to millisecond values
+    ts_list = convert_timestamps_to_ms(arr[:, dates])
+    # calculating sampling period and sampling frequency
     sampling_time_sec = calculate_sample_time(ts_list)
     sampling_frequency_hz = (1 / sampling_time_sec)
+    # length of the data set is the n paramater
     n = len(ts_list)
+    # calculating the time axis for plotting the date set
     time_line = np.arange(0, n * sampling_time_sec, sampling_time_sec)
-    
+    # menu showing
     menu()
+    # using a flag for closing the program
     quit = False
     while not quit :
         option = input()
+        # options (0 - 7 + x to exit)
         if option == '0' :
             menu()
         elif option == '1' :
-            show_time_diagram(time_line, arr[:, 1])
+            show_time_diagram(time_line, arr[:, values])
         elif option == '2' :
-            print('Sampling frequency in Hz: ' + str(sampling_frequency_hz) + '\r\nSampling time period in second: ' + str(sampling_time_sec))
+            print('Sampling frequency: ' + str(sampling_frequency_hz) + ' Hz\r\nSampling time period: ' + str(sampling_time_sec) + ' s')
         elif option == '3' :
-            print('This program use a simple peak finding algorithm. The more times the algorithm runs, the wider ranges it covers.\r\n'
+            print('This program uses a simple peak finding algorithm. The more times the algorithm runs, the wider ranges it covers.\r\n'
             'How many times should the algorithm runs (1-10)?')
             res = get_user_input() 
             peak_values, positions = find_peak_values_with_postitions(arr)
             for i in range(0, int(res) - 1) :
                 peak_values, positions = reduce_peak_values(peak_values, positions)
             time_points = get_time_points(sampling_time_sec, positions)
-            show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
+            show_peak_values(time_line, arr[:, values], time_points, peak_values[1])
         elif option == '4' :
-            freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:,1], sampling_frequency_hz)
+            freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:, values], sampling_frequency_hz)
             show_fft_figure(freq_line, fft_data_set)
         elif option == '5' :
-            show_histogram(arr[:,1], sampling_time_sec)
+            show_histogram(arr[:, values], sampling_time_sec)
         elif option == '6' :
-            show_scatter(arr[:,1])
+            show_scatter(arr[:, values])
         elif option == '7' :
-            show_statistics(arr[:,1])
+            show_statistics(arr[:, values])
         elif option == 'x' :
             quit = True
         else :
