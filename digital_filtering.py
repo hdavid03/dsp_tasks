@@ -58,18 +58,42 @@ def calculate_sample_time(ts_list) :
                 finished = True
     return sample_time / 1000
 
+def fir_filtering(filter_coeff, input) :
+    n = len(input)
+    order = len(filter_coeff)
+    x = np.zeros(order)
+    y = np.zeros(n)
+    for i in range(0, n) :
+        x = np.roll(x, 1)
+        x[0] = input[i]
+        for j in range(0, order) :
+            y[i] += filter_coeff[j] * x[j]
+    return y
+
+def iir_filtering(a, b, input) :
+    n = len(input)
+    order = len(b)
+    x = np.zeros(order)
+    y = np.zeros(n)
+    y_pre = np.zeros(n)
+    for i in range(0, n) :
+        x = np.roll(x);
+        x[0] = input[i]
+        for j in range(0, order - 1) :
+            y[i] = y[i] + b[j] * x[j] - a[j+1] * y_pre[j]
+        y[i] += b[-1] * x[-1]
+        y_pre = y
+    return y
+
 # this function is showing the menu
 def menu() :
     print(
         'Select an option:\r\n'
         '0) - show menu\r\n'
-        '1) - show time based figure of the input data set\r\n'
-        '2) - show the sampling frequency & time\r\n'
-        '3) - find peak values\r\n'
-        '4) - show the input signal in frequency domain\r\n'
-        '5) - show histogram of data set\r\n'
-        '6) - show scatter diagram of data set\r\n'
-        '7) - show statistical informations of the data set\r\n'
+        '1) - show the signal before and after low pass filtering\r\n'
+        '2) - show the signal before and after high pass filtering\r\n'
+        '3) - show the signal before and after band pass filtering\r\n'
+        '4) - show the original signal and its moving avarage\r\n'
         'x) - exit from this program'
     )
 
@@ -90,6 +114,14 @@ def high_pass_fir(order, pass_freq) :
 def band_pass_fir(order, pass_f, stop_f) :
     return sig.firwin(order + 1, [pass_f, stop_f], pass_zero=False)
 
+def show_filtered_figure(t, y, y_filtered):
+    mplot.plot(t, y, t, y_filtered)
+    mplot.xlabel('Time [s]')
+    mplot.ylabel('Amplitude')
+    mplot.legend('Original signal', 'Signal after digital filtering')
+    mplot.grid()
+    mplot.show()
+
 def main() :
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "infile="])
@@ -108,8 +140,38 @@ def main() :
     values = 1
     # converting the date timestamps to millisecond values
     ts_list = convert_timestamps_to_ms(arr[:, dates])
+    n = len(ts_list)
     sampling_time_sec = calculate_sample_time(ts_list)
     sampling_frequency_hz = (1 / sampling_time_sec)
+    order = 40
+    # calculating the time axis for plotting the date set
+    time_line = np.arange(0, n * sampling_time_sec, sampling_time_sec)
+    nyquist_f = sampling_frequency_hz / 2
+    
+    quit = False
+    while not quit :
+        option = input()
+        # options (0 - 7 + x to exit)
+        if option == '0' :
+            menu()
+        elif option == '1' :
+            lowpass_fir_filter = low_pass_fir(order, 0.00002)
+            lp_filtered = fir_filtering(lowpass_fir_filter, arr[:, values])
+            show_filtered_figure(time_line, arr[:, values], lp_filtered)
+        elif option == '2' :
+            highpass_fir_filter = high_pass_fir(order, 0.005)
+            hp_filtered = fir_filtering(highpass_fir_filter, arr[:, values])
+            show_filtered_figure(time_line, arr[:, 1], hp_filtered)
+        elif option == '3' :
+            bandpass_fir_filter = band_pass_fir(order, 0.005, 0.01)
+            bp_filtered = fir_filtering(bandpass_fir_filter, arr[:, values])
+            show_filtered_figure(time_line, arr[:, 1], bp_filtered)
+        elif option == '4' :
+            print(' ')
+        elif option == 'x' :
+            quit = True
+        else :
+            print('Invalid input parameter. Try again!\r\n')
 
 if __name__ == '__main__' :
     main()

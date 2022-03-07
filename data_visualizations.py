@@ -234,7 +234,7 @@ def get_user_input():
 # show the time function of the data set
 def show_time_diagram(t, y) :
     mplot.plot(t, y)
-    mplot.title('Logarithmic frequency domain')
+    mplot.title('Data set in time domain')
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration amplitude')
     mplot.grid()
