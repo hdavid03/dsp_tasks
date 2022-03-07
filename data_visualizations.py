@@ -18,7 +18,6 @@ def usage() :
 # handling of input arguments
 # return with the path of the input file
 def opt_walk(opts) :
-    verbose = False
     infile = None
     for o, a in opts :
         if o in ("-h", "--help") :
@@ -170,13 +169,17 @@ def show_statistics(data_set) :
     # variance - VAR(data) = 1/N * sum([(d - mean)**2 for d in data])
     variance = deviation**2
     print(
-        'Mean of data set: ' + str(mean) + '\r\n'
-        'Mode of data set: ' + str(mode) + '\r\n'
-        'Median of data set: ' + str(median) + '\r\n'
-        'Variance of data set: ' + str(variance) + '\r\n'
-        'Deviation of data set: ' + str(deviation) + '\r\n'
+        'Statistical informations of the data set.\r\n'
+        'Mean:      ' + str(mean) + '\r\n'
+        'Mode:      ' + str(mode) + '\r\n'
+        'Median:    ' + str(median) + '\r\n'
+        'Variance:  ' + str(variance) + '\r\n'
+        'Deviation: ' + str(deviation) + '\r\n'
     )
 
+# this function calculates the DFT values of the input data set
+# in addition it calculates the frequency resolution and the N-length frequency scale
+# it returns with the DFT points and the frequency scale
 def calculate_fft_with_freq_line(data_set, sampling_frequency) :
     d_fft = np.fft.fft(data_set)
     n = len(d_fft)
@@ -186,16 +189,18 @@ def calculate_fft_with_freq_line(data_set, sampling_frequency) :
     freq_line = np.arange(0, stop, df)
     return freq_line, d_fft
 
-def show_fft_figure(freq_line, data_set, sampling_frequency) :
+# plot the DFT of the data set on logarithmic scale
+def show_fft_figure(freq_line, data_set) :
+    # calculates dB values of the DFT points
     data_set_db = 20 * np.lib.scimath.log10(np.abs(data_set))
     mplot.semilogx(freq_line, data_set_db)
     mplot.title('DFT of the data set on logarithmic scale')
     mplot.xlabel('Frequency [Hz]')
     mplot.ylabel('Amplitude [dB]')
-    mplot.xlim(0, sampling_frequency / 2)
     mplot.grid()
     mplot.show()
 
+# show a scatter diagram
 def show_scatter(data_set) :
     x = range(0, len(data_set))
     mplot.scatter(x, data_set)
@@ -204,6 +209,7 @@ def show_scatter(data_set) :
     mplot.ylabel('Values')
     mplot.show()
 
+# handling of the input that the user enters when searching for peak values in the data set
 def get_user_input():
     ok = False
     while not ok :
@@ -219,41 +225,53 @@ def get_user_input():
             ok = True
     return res
 
+# show the time function of the data set
 def show_time_diagram(t, y) :
     mplot.plot(t, y)
     mplot.title('Logarithmic frequency domain')
     mplot.xlabel('Time [sec]')
-    mplot.ylabel('Acceleration')
+    mplot.ylabel('Acceleration amplitude')
     mplot.grid()
     mplot.xlim(t[0], t[-1])
     mplot.show()
 
+# calculates time points from the data positions
+# ex.: if the given data position is 3, then its time point is 3 * 1/Fs, where Fs is the sampling frequency
 def get_time_points(sampling_period, positions) :
     time_points = []
     for i in positions : 
         time_points.append(i * sampling_period)
     return time_points
 
+# showing the peak values of the data set
+# this functions draws two plot on each other
+# the peak values are orange points on the figure
 def show_peak_values(t, y, tp, p) :
     mplot.plot(t, y)
     mplot.title('Peak values of the data set')
     mplot.xlabel('Time [sec]')
-    mplot.ylabel('Acceleration')
+    mplot.ylabel('Acceleration amplitude')
     mplot.xlim(t[0], t[-1])
     mplot.grid()
     mplot.plot(tp, p, 'o')
     mplot.show()
 
+# showing histogram of the data set
+# the y axis show the time duration in second
 def show_histogram(data_set, sampling_time) :
     figure, hist = mplot.subplots()
     hist.hist(data_set)
     y_values = hist.get_yticks()
     hist.set_yticklabels(['{:.2f}'.format(i * sampling_time) for i in y_values])
-    mplot.title('Histogram')
-    mplot.xlabel('Acceleration')
-    mplot.ylabel('Time [s]')
+    mplot.title('Histogram of the data set')
+    mplot.xlabel('Acceleration amplitude')
+    mplot.ylabel('Time [sec]')
     mplot.show()
 
+# the main function describes the main functionality of this program
+# it is showing a menu in console and the user can select from the menu options
+# it works really simple, but this program can handle only one input file, 
+# so to read another input file, the user must start another program
 def main() :
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "infile="])
@@ -261,9 +279,8 @@ def main() :
         print(err + '\r\n')
         usage()
         sys.exit(1)
-    
-    res = opt_walk(opts)
-    infile = res['infile']
+    # opt_walk function returns with the path of the input file
+    infile = opt_walk(opts)
     
     if (infile == None) or (not exists(infile)) :
         print('there is no existing input file\r\nhint: -i, --infile filename')
@@ -298,7 +315,7 @@ def main() :
             show_peak_values(time_line, arr[:, 1], time_points, peak_values[1])
         elif option == '4' :
             freq_line, fft_data_set = calculate_fft_with_freq_line(arr[:,1], sampling_frequency_hz)
-            show_fft_figure(freq_line, fft_data_set, sampling_frequency_hz)
+            show_fft_figure(freq_line, fft_data_set)
         elif option == '5' :
             show_histogram(arr[:,1], sampling_time_sec)
         elif option == '6' :
