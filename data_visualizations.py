@@ -282,7 +282,7 @@ def main() :
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "infile="])
     except getopt.GetoptError as err:
-        print(err + '\r\n')
+        print(err)
         usage()
         sys.exit(1)
     # opt_walk function returns with the path of the input file

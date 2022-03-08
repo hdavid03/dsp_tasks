@@ -63,42 +63,13 @@ def calculate_sample_time(ts_list) :
                 finished = True
     return sample_time / 1000
 
-def fir_filtering(filter_coeff, input) :
-    n = len(input)
-    order = len(filter_coeff)
-    x = np.zeros(order)
-    y = np.zeros(n)
-    k = order - 1
-    for i in range(0, n) :
-        x[k] = input[i]
-        for j in range(0, order) :
-            y[i] += filter_coeff[j] * x[(k + j) % order]
-        if k > 0 :
-            k -= 1
-        else :
-            k = order - 1
-    return y
+def fir_filtering(b, input) :
+    return sig.lfilter(b, 1, input)
 
-def iir_filtering(a, b, input) :
-    n = len(input)
-    order = len(b)
-    x = np.zeros(order)
-    y = np.zeros(n)
-    y_pre = np.zeros(n)
-    k = order - 1
-    for i in range(0, n) :
-        x[k] = input[i]
-        for j in range(0, order - 1) :
-            y[i] = y[i] + b[j] * x[j] - a[j+1] * y_pre[j]
-        y[i] += b[-1] * x[-1]
-        y_pre = y
-        if k > 0 :
-            k -= 1
-        else :
-            k = order - 1
-    return y
+def iir_filtering(b, a, input) :
+    return sig.lfilter(b, a, input)
 
-# this function is showing the menu
+    # this function is showing the menu
 def menu() :
     print(
         'Select an option:\r\n'
@@ -122,7 +93,7 @@ def low_pass_fir(order, cutoff_freq) :
     return sig.firwin(order + 1, cutoff_freq)
 
 def lowhigh_pass_iir(wp, ws) :
-    return sig.iirdesign(wp, ws, 1, 40)
+    return sig.iirdesign(wp, ws, 1, 40, analog=False)
 
 def high_pass_fir(order, pass_freq) :
     return sig.firwin(order + 1, pass_freq, pass_zero=False)
@@ -142,9 +113,9 @@ def show_filtered_figure(t, y, y_filtered):
 
 def main() :
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "infile="])
+        opts, args = getopt.getopt(sys.argv[1:], "hi:t:", ["help", "infile=", "type="])
     except getopt.GetoptError as err:
-        print(err + '\r\n')
+        print(err)
         usage()
         sys.exit(1)
     # opt_walk function returns with the path of the input file
@@ -155,7 +126,7 @@ def main() :
     if (infile == None) or (not exists(infile)) :
         print('there is no existing input file\r\nhint: -i, --infile filename')
         sys.exit(1)
-    if (type != 'fir') or (type != 'iir') :
+    if not (type != 'fir') or (type != 'iir') :
         print('There is no valid filtering type. User can only enter fir or iir type.\r\nTherefore this program uses default (fir) type filtering.')
         type = 'fir'
     # reading the csv file
@@ -170,7 +141,7 @@ def main() :
     n = len(ts_list)
     sampling_time_sec = calculate_sample_time(ts_list)
     sampling_frequency_hz = (1 / sampling_time_sec)
-    order = 40
+    order = 51
     # calculating the time axis for plotting the date set
     time_line = np.arange(0, n * sampling_time_sec, sampling_time_sec)
     nyquist_f = sampling_frequency_hz / 2
@@ -186,30 +157,36 @@ def main() :
         elif option == '1' :
             lp_filtered = None
             if type == 'iir':
-                lowpass_iir_filter = lowhigh_pass_iir(0.00002, 0.0001)
-                lp_filtered = iir_filtering(lowpass_iir_filter, arr[:, values])
+                b , a = lowhigh_pass_iir(0.005, 0.01, sampling_frequency_hz)
+                lp_filtered = iir_filtering(b, a, arr[:, values])
             else :
-                lowpass_fir_filter = low_pass_fir(order, 0.00002)
+                lowpass_fir_filter = low_pass_fir(order, 0.01)
                 lp_filtered = fir_filtering(lowpass_fir_filter, arr[:, values])
             show_filtered_figure(time_line, arr[:, values], lp_filtered)
         elif option == '2' :
             if type == 'iir' :
-                highpass_iir_filter = lowhigh_pass_iir(0.005, 0.001)
-                hp_filtered = iir_filtering(highpass_iir_filter, arr[:, values])
+                b , a = lowhigh_pass_iir(0.01, 0.005)
+                hp_filtered = iir_filtering(b, a, arr[:, values])
             else :
                 highpass_fir_filter = high_pass_fir(order, 0.005)
                 hp_filtered = fir_filtering(highpass_fir_filter, arr[:, values])
             show_filtered_figure(time_line, arr[:, 1], hp_filtered)
         elif option == '3' :
             if type == 'iir' :
-                bandpass_iir_filter = band_pass_iir(0.001, 0.01, 0.005, 0.02)
-                bp_filtered = iir_filtering(bandpass_iir_filter, arr[:, values])
+                b, a = band_pass_iir(0.001, 0.01, 0.005, 0.02)
+                bp_filtered = iir_filtering(b, a, arr[:, values])
             else :
                 bandpass_fir_filter = band_pass_fir(order, 0.005, 0.01)
                 bp_filtered = fir_filtering(bandpass_fir_filter, arr[:, values])
-            show_filtered_figure(time_line, arr[:, 1], bp_filtered)
+            show_filtered_figure(time_line, arr[:, values], bp_filtered)
         elif option == '4' :
-            print(' ')
+            print('Moving avarage of 50 element')
+            coef = 1 / (order - 1)
+            b = []
+            for i in range(0, order - 1) :
+                b.append(coef)
+            filtered = fir_filtering(b, arr[:, values])
+            show_filtered_figure(time_line, arr[:, values], filtered)
         elif option == 'x' :
             quit = True
         else :
