@@ -68,11 +68,15 @@ def fir_filtering(filter_coeff, input) :
     order = len(filter_coeff)
     x = np.zeros(order)
     y = np.zeros(n)
+    k = order - 1
     for i in range(0, n) :
-        x = np.roll(x, 1)
-        x[0] = input[i]
+        x[k] = input[i]
         for j in range(0, order) :
-            y[i] += filter_coeff[j] * x[j]
+            y[i] += filter_coeff[j] * x[(k + j) % order]
+        if k > 0 :
+            k -= 1
+        else :
+            k = order - 1
     return y
 
 def iir_filtering(a, b, input) :
@@ -81,13 +85,17 @@ def iir_filtering(a, b, input) :
     x = np.zeros(order)
     y = np.zeros(n)
     y_pre = np.zeros(n)
+    k = order - 1
     for i in range(0, n) :
-        x = np.roll(x);
-        x[0] = input[i]
+        x[k] = input[i]
         for j in range(0, order - 1) :
             y[i] = y[i] + b[j] * x[j] - a[j+1] * y_pre[j]
         y[i] += b[-1] * x[-1]
         y_pre = y
+        if k > 0 :
+            k -= 1
+        else :
+            k = order - 1
     return y
 
 # this function is showing the menu
@@ -129,7 +137,6 @@ def show_filtered_figure(t, y, y_filtered):
     mplot.plot(t, y, t, y_filtered)
     mplot.xlabel('Time [s]')
     mplot.ylabel('Amplitude')
-    mplot.legend('Original signal', 'Signal after digital filtering')
     mplot.grid()
     mplot.show()
 
@@ -167,6 +174,8 @@ def main() :
     # calculating the time axis for plotting the date set
     time_line = np.arange(0, n * sampling_time_sec, sampling_time_sec)
     nyquist_f = sampling_frequency_hz / 2
+
+    menu()
     
     quit = False
     while not quit :
