@@ -1,5 +1,6 @@
 #!/bin/python3
 
+from genericpath import exists
 from datetime import datetime as dt
 import scipy.signal as sig
 import pandas as ps
@@ -12,21 +13,25 @@ import sys
 def usage() :
     print(
         '-h --help for help\r\n-i --infile filename\r\n'
+        '-t --type for digital filtering (fir or iir)'
     )
 
 # handling of input arguments
 # return with the path of the input file
 def opt_walk(opts) :
     infile = None
+    type = 'fir'
     for o, a in opts :
         if o in ("-h", "--help") :
             usage()
         elif o in ("-i", "--infile") :
             infile = a
+        elif o in ("-t", "--type") :
+            type = a
         else :
             print("unhandled option")
             usage()
-    return infile
+    return {'infile' : infile, 'type' : type}
 
 # estimating of the sampling period time
 # description of this function and comments can be found in data_visualizations.py 
@@ -108,8 +113,14 @@ def convert_timestamps_to_ms(timestamps) :
 def low_pass_fir(order, cutoff_freq) :
     return sig.firwin(order + 1, cutoff_freq)
 
+def lowhigh_pass_iir(wp, ws) :
+    return sig.iirdesign(wp, ws, 1, 40)
+
 def high_pass_fir(order, pass_freq) :
     return sig.firwin(order + 1, pass_freq, pass_zero=False)
+
+def band_pass_iir(wp1, wp2, ws1, ws2) :
+    return sig.iirdesign([wp1, wp2], [ws1, ws2], 1, 40)
 
 def band_pass_fir(order, pass_f, stop_f) :
     return sig.firwin(order + 1, [pass_f, stop_f], pass_zero=False)
@@ -130,7 +141,16 @@ def main() :
         usage()
         sys.exit(1)
     # opt_walk function returns with the path of the input file
-    infile = opt_walk(opts)
+    args = opt_walk(opts)
+    infile = args['infile']
+    type = args['type']
+
+    if (infile == None) or (not exists(infile)) :
+        print('there is no existing input file\r\nhint: -i, --infile filename')
+        sys.exit(1)
+    if (type != 'fir') or (type != 'iir') :
+        print('There is no valid filtering type. User can only enter fir or iir type.\r\nTherefore this program uses default (fir) type filtering.')
+        type = 'fir'
     # reading the csv file
     data_set = ps.read_csv(infile, sep=',', squeeze=True, names=['time_stamp', 'acceleration'])
     # converting the DataFrame object to numpy array
@@ -155,16 +175,29 @@ def main() :
         if option == '0' :
             menu()
         elif option == '1' :
-            lowpass_fir_filter = low_pass_fir(order, 0.00002)
-            lp_filtered = fir_filtering(lowpass_fir_filter, arr[:, values])
+            lp_filtered = None
+            if type == 'iir':
+                lowpass_iir_filter = lowhigh_pass_iir(0.00002, 0.0001)
+                lp_filtered = iir_filtering(lowpass_iir_filter, arr[:, values])
+            else :
+                lowpass_fir_filter = low_pass_fir(order, 0.00002)
+                lp_filtered = fir_filtering(lowpass_fir_filter, arr[:, values])
             show_filtered_figure(time_line, arr[:, values], lp_filtered)
         elif option == '2' :
-            highpass_fir_filter = high_pass_fir(order, 0.005)
-            hp_filtered = fir_filtering(highpass_fir_filter, arr[:, values])
+            if type == 'iir' :
+                highpass_iir_filter = lowhigh_pass_iir(0.005, 0.001)
+                hp_filtered = iir_filtering(highpass_iir_filter, arr[:, values])
+            else :
+                highpass_fir_filter = high_pass_fir(order, 0.005)
+                hp_filtered = fir_filtering(highpass_fir_filter, arr[:, values])
             show_filtered_figure(time_line, arr[:, 1], hp_filtered)
         elif option == '3' :
-            bandpass_fir_filter = band_pass_fir(order, 0.005, 0.01)
-            bp_filtered = fir_filtering(bandpass_fir_filter, arr[:, values])
+            if type == 'iir' :
+                bandpass_iir_filter = band_pass_iir(0.001, 0.01, 0.005, 0.02)
+                bp_filtered = iir_filtering(bandpass_iir_filter, arr[:, values])
+            else :
+                bandpass_fir_filter = band_pass_fir(order, 0.005, 0.01)
+                bp_filtered = fir_filtering(bandpass_fir_filter, arr[:, values])
             show_filtered_figure(time_line, arr[:, 1], bp_filtered)
         elif option == '4' :
             print(' ')
