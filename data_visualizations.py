@@ -253,13 +253,14 @@ def get_time_points(sampling_period, positions) :
 # this functions draws two plot on each other
 # the peak values are orange points on the figure
 def show_peak_values(t, y, tp, p) :
-    mplot.plot(t, y)
+    mplot.plot(t, y, label='Signal')
     mplot.title('Peak values of the data set')
     mplot.xlabel('Time [sec]')
     mplot.ylabel('Acceleration amplitude')
     mplot.xlim(t[0], t[-1])
     mplot.grid()
-    mplot.plot(tp, p, 'o')
+    mplot.plot(tp, p, 'o', label='Peak values')
+    mplot.legend()
     mplot.show()
 
 # showing histogram of the data set
